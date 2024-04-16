@@ -1,0 +1,184 @@
+{% load main_tags %}
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat with AI</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-image: url('https://source.unsplash.com/1920x1080/?nature');
+        background-size: auto;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+    }
+    .chat-container {
+        width: 400px;
+        margin: 20px auto;
+        background-color: rgba(255, 255, 255, 0.8);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .chat-header {
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+        text-align: center;
+        font-size: 1.2em;
+        color: #333;
+        background-color: #007bff;
+        border-radius: 8px 8px 0 0;
+    }
+    .chat-messages {
+        height: 300px;
+        overflow-y: scroll;
+        padding: 10px;
+    }
+    .message {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-start;
+    }
+    .message.user {
+        justify-content: flex-end;
+    }
+    .message-body {
+        max-width: 70%;
+        padding: 12px;
+        border-radius: 8px;
+    }
+    .message.user .message-body {
+        background-color: #007bff;
+        color: #fff;
+        border-top-right-radius: 0;
+    }
+    .message.ai .message-body {
+        background-color: #f0f0f0;
+        color: #333;
+        border-top-left-radius: 0;
+    }
+    .message-info {
+        font-size: 0.8em;
+        color: #888;
+        margin-left: 10px;
+    }
+    .user-input-container {
+        padding: 15px;
+        border-top: 1px solid #eee;
+        display: flex;
+        align-items: center;
+    }
+    .user-input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 0.9em;
+    }
+    .user-input:focus {
+        outline: none;
+    }
+    .send-button {
+        padding: 10px 20px;
+        border: none;
+        background-color: #007bff;
+        color: #fff;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.9em;
+        margin-left: 10px;
+    }
+    .send-button:hover {
+        background-color: #0056b3;
+    }
+</style>
+</head>
+<body>
+<div class="overlay"></div>
+<div class="chat-container">
+    <div class="chat-header">Chat with AI</div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="user-input-container">
+        <input type="text" class="user-input" id="user-input" placeholder='typing your message here...'>
+        <button class="send-button" id="send-button">Send</button>
+    </div>
+</div>
+
+<script>
+  const chatMessages = document.getElementById('chat-messages');
+  const userInput = document.getElementById('user-input');
+  const sendButton = document.getElementById('send-button');
+  console.log('vxod')
+  async function appendMessage(sender, message, isAI = false) {
+      const messageElement = document.createElement('div');
+      messageElement.classList.add('message', isAI ? 'ai' : 'user');
+      myJson = {
+        "message": message,
+      }
+      console.log('Отправляем запрос с данными:', myJson);
+      if (sender == 'AI'){
+          const response = await fetch('http://127.0.0.1:8000/api/get_answer/', {
+              method: 'POST',
+              body: JSON.stringify(myJson),
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+              },
+              
+          });
+  
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+  
+          const data = await response.json();
+          let answer = data.answer;
+  
+          messageElement.innerHTML = `
+              <div class="message-body">${answer}</div>
+              <div class="message-info">${sender}</div>
+          `;
+      } else {
+        messageElement.innerHTML = `
+            <div class="message-body">${message}</div>
+            <div class="message-info">${sender}</div>
+        `;
+      }
+      chatMessages.appendChild(messageElement);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+  
+  function userSendMessage() {
+      let message = userInput.value.trim();
+      if (message !== '') {
+          appendMessage('You', message);
+          userInput.value = '';
+          setTimeout(() => {
+              appendMessage('AI', message, true);
+          }, 1000);
+      }
+  }
+  
+  sendButton.addEventListener('click', userSendMessage);
+  
+  userInput.addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+          userSendMessage();
+      }
+  });
+</script>
+
+</body>
+</html>
